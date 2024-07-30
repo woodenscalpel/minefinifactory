@@ -1,0 +1,9 @@
+{
+  "variants":{
+    "facing=north": {"model":  "minefinifactory:block/conveyorblock","uvlock": false},
+    "facing=east": {"model":  "minefinifactory:block/conveyorblock", "y":  90,"uvlock": false},
+    "facing=south": {"model":  "minefinifactory:block/conveyorblock", "y":  180,"uvlock":false},
+    "facing=west": {"model":  "minefinifactory:block/conveyorblock", "y":  270, "uvlock": false}
+  }
+}
+

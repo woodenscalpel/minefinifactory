@@ -44,7 +44,7 @@ public class BlockInit {
 
     public static void register(){
         BLOCKS.register();
-        ITEMS.register();
+        //FORGITEMS.register();
         BLOCKENTITIES.register();
     }
 }
