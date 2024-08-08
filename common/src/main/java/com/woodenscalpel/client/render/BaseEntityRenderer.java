@@ -17,12 +17,15 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+
+import java.util.List;
 
 public class BaseEntityRenderer extends EntityRenderer<BaseEntity> {
     private final EntityRendererProvider.Context context;
@@ -38,14 +41,15 @@ public class BaseEntityRenderer extends EntityRenderer<BaseEntity> {
 
     @Override
     public void render(BaseEntity entity, float entityYaw, float partialTick, PoseStack poseStack, MultiBufferSource buffer, int packedLight) {
-        if(entity.isNotPlaced()) { //TODO checking isIdle is better (doesnt query level state) but doesnt work due to client server sync issues (i think)
+        List<Tuple<Vec3i,BlockState>> blocks = entity.getBlocks();
+        if(blocks == null || blocks.isEmpty()){return;}
+        if(entity.isNotPlaced(blocks)) { //TODO checking isIdle is better (doesnt query level state) but doesnt work due to client server sync issues (i think)
             Level level = entity.level();
-            VertexConsumer buffer2 = Minecraft.getInstance().renderBuffers().bufferSource().getBuffer(RenderType.solid());
 
-            for (int i = 0; i < entity.relPositions.size(); i++) {
-                BlockPos absPos = new BlockPos(entity.getBasePos().offset(entity.relPositions.get(i)));
-                Vec3i relpos = entity.relPositions.get(i);
-                BlockState state = entity.states.get(i);
+            for (int i = 0; i < blocks.size(); i++) {
+                BlockPos absPos = new BlockPos(entity.getBasePos().offset(blocks.get(i).getA()));
+                Vec3i relpos = blocks.get(i).getA();
+                BlockState state = blocks.get(i).getB();
                 //renderBlockAt(poseStack,buffer2,state,absPos,packedLight);
                 poseStack.pushPose();
                 poseStack.translate(relpos.getX(), relpos.getY(), relpos.getZ());

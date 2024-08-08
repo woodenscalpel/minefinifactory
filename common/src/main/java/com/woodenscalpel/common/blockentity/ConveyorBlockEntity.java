@@ -23,7 +23,6 @@ import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 
-import static com.woodenscalpel.Minefinifactory.TICKSPERBLOCK;
 
 public class ConveyorBlockEntity extends BlockEntity implements TickableBlockEntity {
     public ConveyorBlockEntity(BlockEntityType<ConveyorBlockEntity> type, BlockPos pos, BlockState blockState) {

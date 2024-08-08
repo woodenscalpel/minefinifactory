@@ -1,0 +1,26 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "minefinifactory:block/welder_vertical",
+      "x": 180
+    },
+    "facing=east": {
+      "model": "minefinifactory:block/welder",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "minefinifactory:block/welder"
+    },
+    "facing=south": {
+      "model": "minefinifactory:block/welder",
+      "y": 180
+    },
+    "facing=up": {
+      "model": "minefinifactory:block/welder_vertical"
+    },
+    "facing=west": {
+      "model": "minefinifactory:block/welder",
+      "y": 270
+    }
+  }
+}

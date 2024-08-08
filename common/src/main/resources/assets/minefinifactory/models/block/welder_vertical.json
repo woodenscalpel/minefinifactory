@@ -1,0 +1,7 @@
+{
+  "parent": "minecraft:block/orientable_vertical",
+  "textures": {
+    "front": "minefinifactory:block/welder_front",
+    "side": "minefinifactory:block/welder_top"
+  }
+}

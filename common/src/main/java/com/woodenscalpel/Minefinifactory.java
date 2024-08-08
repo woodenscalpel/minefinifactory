@@ -4,25 +4,44 @@ import com.google.common.base.Suppliers;
 import com.mojang.datafixers.FunctionType;
 import com.mojang.logging.LogUtils;
 import com.woodenscalpel.common.blocks.EmitterBlock;
+import com.woodenscalpel.common.blocks.multiblockutil.MultiblockBreakEvent;
+import com.woodenscalpel.common.blocks.multiblockutil.MultiblockPlaceEvent;
 import com.woodenscalpel.common.blocks.pusher.PusherBaseBlock;
 import com.woodenscalpel.common.blocks.pusher.PusherHeadBlock;
 import com.woodenscalpel.common.init.BlockInit;
+import com.woodenscalpel.common.init.ClientInit;
 import com.woodenscalpel.common.init.EntityInit;
+import com.woodenscalpel.common.mastertick.MasterTick;
+import com.woodenscalpel.common.network.EntityDataListSerializer;
 import dev.architectury.event.EventResult;
+import dev.architectury.event.events.client.ClientLifecycleEvent;
+import dev.architectury.event.events.common.BlockEvent;
 import dev.architectury.event.events.common.TickEvent;
+import dev.architectury.platform.Platform;
 import dev.architectury.registry.CreativeTabRegistry;
 import dev.architectury.registry.registries.DeferredRegister;
 import dev.architectury.registry.registries.Registrar;
 import dev.architectury.registry.registries.RegistrarManager;
 import dev.architectury.registry.registries.RegistrySupplier;
+import dev.architectury.utils.Env;
+import dev.architectury.utils.EnvExecutor;
+import dev.architectury.utils.value.IntValue;
+import net.fabricmc.api.EnvType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.*;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import java.util.function.Supplier;
@@ -45,9 +64,6 @@ public final class Minefinifactory {
 
     public static final Logger LOGGER = LogUtils.getLogger();
 
-    public static int mastertickcount = 0;
-    public static final int TICKSPERBLOCK = 5;
-
 
     public static void init() {
         // Write common init code here.
@@ -59,7 +75,6 @@ public final class Minefinifactory {
         BlockInit.register();
 
         //Register items
-        //Registrar<Item> items = MANAGER.get().get(Registries.ITEM);
         ITEMS.register();
 
 
@@ -68,9 +83,25 @@ public final class Minefinifactory {
 
 
         //Register Events
-        mastertickcount = 0;
-        TickEvent.ServerLevelTick.SERVER_LEVEL_PRE.register((ServerLevel level) -> {mastertickcount++;
-        });
+        MasterTick.registerMasterTickEvent();
+
+        BlockEvent.BREAK.register( (Level level, BlockPos pos, BlockState state, ServerPlayer player, @Nullable IntValue xp) ->
+                MultiblockBreakEvent.onBreak(level, pos, state, player, xp)
+        );
+
+        BlockEvent.PLACE.register((Level level, BlockPos pos, BlockState state, @Nullable Entity placer) ->
+                MultiblockPlaceEvent.onPlace(level,pos,state,placer));
+
+
+        //Networking
+        EntityDataSerializers.registerSerializer(EntityDataListSerializer.BLOCKTUPLE);
+
+
+        //Client renderer
+        //todo EnvExecutor?
+        if(Platform.getEnv() == EnvType.CLIENT) {
+            ClientLifecycleEvent.CLIENT_SETUP.register(ClientInit::register);
+        }
 
     }
 }
