@@ -79,7 +79,7 @@ public class WelderBlockEntity extends BlockEntity implements TickableBlockEntit
     @Override
     public void tick() {
         if(level.isClientSide){return;}
-        if(MasterTick.isMasterTick()){
+        if(MasterTick.isMasterTick(this.level.getServer())){
             BlockPos weldPos = this.getBlockPos().relative(this.getBlockState().getValue(WelderBlock.FACING));
             AABB blockabove = new AABB(weldPos, new BlockPos(weldPos.getX() + 1, weldPos.getY() + 1, weldPos.getZ() + 1));
             List<BaseEntity> ents = level.getEntitiesOfClass(BaseEntity.class, blockabove);

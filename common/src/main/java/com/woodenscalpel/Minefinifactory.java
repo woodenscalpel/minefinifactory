@@ -83,7 +83,7 @@ public final class Minefinifactory {
 
 
         //Register Events
-        MasterTick.registerMasterTickEvent();
+        //MasterTick.registerMasterTickEvent();
 
         BlockEvent.BREAK.register( (Level level, BlockPos pos, BlockState state, ServerPlayer player, @Nullable IntValue xp) ->
                 MultiblockBreakEvent.onBreak(level, pos, state, player, xp)

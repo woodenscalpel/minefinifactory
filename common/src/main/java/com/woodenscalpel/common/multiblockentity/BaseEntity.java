@@ -184,7 +184,7 @@ public class BaseEntity extends Entity {
         this.verticalCollision = false;
         super.tick();
 
-        if (MasterTick.isMasterTick()){
+        if (MasterTick.isMasterTick(this.getServer())){
             maintick();
         }
         else{
@@ -254,6 +254,11 @@ public class BaseEntity extends Entity {
 
          -CONVEYOR (additive)
          */
+
+        if(getLifterInfluence(blocks)){
+            return Direction.UP;
+        }
+
         if(canMove(Direction.DOWN,blocks)){
             return Direction.DOWN;
         }
@@ -314,6 +319,28 @@ public class BaseEntity extends Entity {
         if(ns_conveyor_influence <0){return Direction.SOUTH;}
 
         return null;
+    }
+
+    private boolean getLifterInfluence(List<Tuple<Vec3i,BlockState>> blocks) {
+        //TODO roll into conveyorinfluence to not repeat work. Use listener function on lifter to be able to config lifter height per-lifter
+        int LIFTERHEIGHT = 5;
+
+        for(int i=0;i<blocks.size();i++) {
+           for(int h=-1;h>-LIFTERHEIGHT;h--){
+               BlockPos liftPos = new BlockPos(getBasePos().offset(blocks.get(i).getA())).offset(0,h,0);
+               if (level().getBlockState(liftPos).getBlock() == BlockInit.lifterBlock.get()) {
+                  return true ;
+               }
+
+               if (level().getBlockState(liftPos).getBlock() != Blocks.AIR) {
+                   break;
+               }
+           }
+        }
+
+
+
+        return false;
     }
 
     private void getConveyorInfluence(List<Tuple<Vec3i,BlockState>> blocks) {

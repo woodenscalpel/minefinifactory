@@ -5,10 +5,7 @@ import com.woodenscalpel.client.render.blockentity.WelderBER;
 import com.woodenscalpel.common.blockentity.ConveyorBlockEntity;
 import com.woodenscalpel.common.blockentity.DestroyerBlockEntity;
 import com.woodenscalpel.common.blockentity.WelderBlockEntity;
-import com.woodenscalpel.common.blocks.ConveyorBlock;
-import com.woodenscalpel.common.blocks.DestroyerBlock;
-import com.woodenscalpel.common.blocks.EmitterBlock;
-import com.woodenscalpel.common.blocks.WelderBlock;
+import com.woodenscalpel.common.blocks.*;
 import com.woodenscalpel.common.blocks.pusher.PusherBaseBlock;
 import com.woodenscalpel.common.blocks.pusher.PusherHeadBlock;
 import com.woodenscalpel.common.multiblockentity.BaseEntity;
@@ -42,6 +39,7 @@ public class BlockInit {
     public static final RegistrySupplier<Block> conveyorBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "conveyorblock"), () -> new ConveyorBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
     public static final RegistrySupplier<Block> welderBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "welderblock"), () -> new WelderBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
     public static final RegistrySupplier<Block> destroyerBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "destroyerblock"), () -> new DestroyerBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
+    public static final RegistrySupplier<Block> lifterBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "lifterblock"), () -> new LifterBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
 
     public static final RegistrySupplier<Block> pusherBaseBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "pusherblock"), () -> new PusherBaseBlock(false,BlockBehaviour.Properties.copy(Blocks.PISTON)));
     public static final RegistrySupplier<Block> pusherHeadBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "pusherheadblock"), () -> new PusherHeadBlock(BlockBehaviour.Properties.copy(Blocks.PISTON_HEAD)));
@@ -50,6 +48,7 @@ public class BlockInit {
     public static final RegistrySupplier<BlockItem> conveyorBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"conveyorblockitem"), () -> new BlockItem(conveyorBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> welderBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"welderblockitem"), () -> new BlockItem(welderBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> destroyerBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"destroyerblockitem"), () -> new BlockItem(destroyerBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
+    public static final RegistrySupplier<BlockItem> lifterBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"lifterblockitem"), () -> new BlockItem(lifterBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> pusherBlockItem = ITEMS.register(new ResourceLocation(MOD_ID +"pusherblockitem"), () -> new BlockItem(pusherBaseBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
 
     public static final RegistrySupplier<BlockEntityType<ConveyorBlockEntity>> conveyorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "conveyorblockentity"),
