@@ -48,6 +48,7 @@ public class EmitterBlock extends Block {
 
                 blocks.add(new Tuple<>(new Vec3i(0,0,0), Blocks.BAMBOO_MOSAIC.defaultBlockState()));
                 blocks.add(new Tuple<>(new Vec3i(1,0,0), Blocks.ACACIA_FENCE.defaultBlockState()));
+                blocks.add(new Tuple<>(new Vec3i(1,1,0), Blocks.OAK_LOG.defaultBlockState()));
                 level.addFreshEntity(new BaseEntity(level,new Vec3(pos.getX(),pos.getY()+1,pos.getZ()), blocks ));
             }
 

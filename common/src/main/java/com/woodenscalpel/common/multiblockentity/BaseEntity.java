@@ -17,13 +17,14 @@ import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -33,21 +34,47 @@ public class BaseEntity extends Entity {
 
     public static final EntityDataAccessor<List<Tuple<Vec3i, BlockState>>> BLOCKS = SynchedEntityData.defineId(BaseEntity.class, EntityDataListSerializer.BLOCKTUPLE);
 
-    public boolean isBlock(BlockPos absPos,List<Tuple<Vec3i,BlockState>> blocks) {
-       // Vec3i relpos = ((Vec3i) absPos.offset(this.getBasePos().multiply(-1)));
-        Vec3i relpos = this.getBasePos().multiply(-1).offset(absPos);
-        for(int i=0; i<blocks.size();i++){
-           if(blocks.get(i).getA().equals(relpos)){
-               return true;}
-        }
-        return false;
+    public static final List<Direction> DirectionPriority = Arrays.asList(Direction.UP, Direction.DOWN, Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST);
+    private static final Integer GRAVITYPRIORITY = 0;
+    private static final Integer CONVEYORPRIORITY = 1;
+    private static final Integer LIFTERPRIORITY = 2;
+    private static final Integer PISTONPRIORITY = 3;
+    private static final Integer CANCELPRIORITY = Integer.MAX_VALUE;
+    private static final String PUSHNBTTAG = "dir";
+
+    private Set<BaseEntity> pushProvidence;
+    public boolean isIdle;
+
+    public Tuple<Integer,Direction> internalInfluence;
+    public Tuple<Integer,Direction> externalInfluence;
+    public Tuple<Integer,Direction> strongestInfluence;
+
+    public CompoundTag pushNBT;
+
+    public boolean lifterIgnoreGravity;
+
+
+
+
+    public BaseEntity(EntityType<BaseEntity> entityType, Level level) {
+        super(entityType, level);
     }
 
-    /*
-    public void recalculateHitbox() {
-        this.setBoundingBox(this.makeBoundingBox(this.position().x,this.position().y,this.position().z));
+    public BaseEntity(Level level, Vec3 position, List<Tuple<Vec3i, BlockState>> newblocks) {
+
+        this(EntityInit.baseEntityType.get() , level);
+        isIdle = true;
+
+        internalInfluence = new Tuple<>(-999, null);
+        externalInfluence = new Tuple<>(-999, null);
+        strongestInfluence = new Tuple<>(-999, null);
+
+        pushNBT = new CompoundTag();
+        pushNBT.putInt(PUSHNBTTAG, -1);
+
+        this.setBlocks(newblocks);
+        setPos(position.x,position.y,position.z);
     }
-     */
 
     public void destroy() {
         //might need to clean up blocks in world or something before killing
@@ -80,8 +107,6 @@ public class BaseEntity extends Entity {
             Tuple<Vec3i,BlockState> firstblock = blocks.get(0);
             newblocks.add(firstblock);
             blocks.remove(firstblock);
-            Minefinifactory.LOGGER.info(""+blocks.size());
-            Minefinifactory.LOGGER.info(newblocks.toString());
             addneighbours(queue,firstblock.getA());
             //start algo
             while(!queue.isEmpty()){
@@ -93,19 +118,27 @@ public class BaseEntity extends Entity {
                     addneighbours(queue,check);
                 }
             }
-            Minefinifactory.LOGGER.info("SPAWINGING" +newblocks.size());
-           level().addFreshEntity(new BaseEntity(level(), this.position(),newblocks)); // TODO all blocks will retain parents origin position when they should probably be recalculated
+            level().addFreshEntity(new BaseEntity(level(), this.position(),newblocks)); // TODO all blocks will retain parents origin position when they should probably be recalculated
         }
-        Minefinifactory.LOGGER.info("DESTROYING!");
         this.destroy();
     }
 
     public Tuple<Vec3i,BlockState> scanfirsttuple(List<Tuple<Vec3i,BlockState>> blocks, Vec3i check){
-
+        //Takes in relpos as input
         for(Tuple<Vec3i,BlockState> t : blocks){
             if(t.getA().equals(check)){return t;}
         }
         return null;
+    }
+
+    public boolean isBlock(BlockPos absPos,List<Tuple<Vec3i,BlockState>> blocks) {
+        // Vec3i relpos = ((Vec3i) absPos.offset(this.getBasePos().multiply(-1)));
+        Vec3i relpos = this.getBasePos().multiply(-1).offset(absPos);
+        for(int i=0; i<blocks.size();i++){
+            if(blocks.get(i).getA().equals(relpos)){
+                return true;}
+        }
+        return false;
     }
 
     public void addneighbours(Stack<Vec3i> queue, Vec3i relpos){
@@ -115,64 +148,6 @@ public class BaseEntity extends Entity {
     }
 
 
-    public enum InfluenceTypes{
-        CONVEYOR,
-        PUSHER,
-        GRAVITY
-    }
-    public Stack<Tuple<InfluenceTypes, Direction>> influenceStack;
-
-    public boolean isIdle;
-    public Direction moveDirection;
-
-    //public List<Tuple<Vec3i,BlockState>> blocks;
-
-    //public List<Vec3i> relPositions;
-    //public List<BlockState> states;
-
-
-    public BaseEntity(EntityType<BaseEntity> entityType, Level level) {
-        super(entityType, level);
-        //relPositions = new ArrayList<>();
-        //states= new ArrayList<>();
-        influenceStack = new Stack<>();
-
-       // blocks = new ArrayList<>();
-/*
-        blocks.add(new Tuple<>(new Vec3i(0,0,0), Blocks.BAMBOO_MOSAIC.defaultBlockState()));
-        blocks.add(new Tuple<>(new Vec3i(1,0,0), Blocks.ACACIA_FENCE.defaultBlockState()));
-        blocks.add(new Tuple<>(new Vec3i(1,1,1), Blocks.BROWN_STAINED_GLASS.defaultBlockState()));
-
- */
-        //recalculateHitbox();
-
-    }
-/*
-    public BaseEntity(Level level, double x, double y, double z){
-        this(EntityInit.baseEntityType.get() , level);
-        isIdle = true;
-        moveDirection = Direction.DOWN;
-
-        blocks = new ArrayList<>();
-        blocks.add(new Tuple<>(new Vec3i(0,0,0), Blocks.BAMBOO_MOSAIC.defaultBlockState()));
-        blocks.add(new Tuple<>(new Vec3i(1,0,0), Blocks.ACACIA_FENCE.defaultBlockState()));
-        blocks.add(new Tuple<>(new Vec3i(1,1,1), Blocks.BROWN_STAINED_GLASS.defaultBlockState()));
-
-        //debug
-
-        setPos(x,y,z);
-    }
-
- */
-
-    public BaseEntity(Level level, Vec3 position, List<Tuple<Vec3i, BlockState>> newblocks) {
-
-        this(EntityInit.baseEntityType.get() , level);
-        isIdle = true;
-        moveDirection = Direction.DOWN;
-        this.setBlocks(newblocks);
-        setPos(position.x,position.y,position.z);
-    }
 
 
     @Override
@@ -193,11 +168,40 @@ public class BaseEntity extends Entity {
     }
 
     private void subtick(){
-        if(!isIdle && moveDirection != null){
-            move(MoverType.SELF,Helpers.Vec3itof(moveDirection.getNormal()).scale(1F/TICKSPERBLOCK));
+        Direction moveDir = strongestInfluence.getB();
+        //moveDirection = getMoveDirFromStack();
+
+        if(!isIdle && moveDir != null) {
+            boolean move = true;
+            if (pushProvidence != null) {
+                for (BaseEntity ent : pushProvidence) {
+                    if (ent.strongestInfluence.getB() != moveDir) {
+                        move = false;
+                    }
+                }
+                if (move) {
+                    move(MoverType.SELF, Helpers.Vec3itof(moveDir.getNormal()).scale(1F / TICKSPERBLOCK));
+                }
+            }
         }
-        this.influenceStack = new Stack<>(); //Only count influence on mainframes
+        if(level().getServer().getTickCount() % (TICKSPERBLOCK) == (TICKSPERBLOCK - 1)) {
+            resetvarsfornexttick();
+        }
     }
+
+    private void resetvarsfornexttick() {
+        /*
+        This is done during subtick, as if done at beginning of maintick it will zero out fields entities that tick before it have set
+
+         */
+        lifterIgnoreGravity = false;
+        pushProvidence = null;
+
+        internalInfluence = new Tuple<>(-999, null);
+        externalInfluence = new Tuple<>(-999, null);
+        strongestInfluence = new Tuple<>(-999, null);
+    }
+
     private void maintick() {
 
         snaptoblock();//Failsafe, Should be aligned to block already
@@ -208,121 +212,247 @@ public class BaseEntity extends Entity {
             placeBlocks(blocks);
         }
 
-        moveDirection = getMovementDirection(blocks); // returns whatever movement influence is highest priority / amount (movement influence is added by other blocks). returns null if doesn't want to move
+        internalInfluence = getMoveDirInitialScan(blocks);
+        strongestInfluence = compareInfluence();
+
+        //Check for potential collision with other entity, and prevent the movement of one of them based on priority.
+        //might offload to subtick, but would cause jerky movement
+        if(strongestInfluence.getB() != null) {
+            preventCollision(blocks);
+        }
 
         //if idle since last maintick, but starting to move now, remove blocks from world.
-        if (moveDirection != null && isIdle) {
+        if (strongestInfluence.getB() != null && isIdle) {
             removeBlocks(blocks);
         }
 
-        if (moveDirection == null || !canMove(moveDirection,blocks)) {
+        if (strongestInfluence.getB() == null) {
             isIdle = true;
         } else {
-
-            if(canMove(moveDirection,blocks)) {
-                isIdle = false; //This is what is checked to start movement
-            }
+            isIdle = false; //This is what is checked to start movement
         }
 
     }
 
-    private boolean canMove(Direction moveDirection,List<Tuple<Vec3i,BlockState>> blocks) {
-        /*
-        Collision check. Iterates through all block positions, but can maybe be optimized to only check relevant positions
-         */
+    private Tuple<Integer, Direction> compareInfluence() {
+        if(externalInfluence.getA() > internalInfluence.getA()){
+            return externalInfluence;
+        }
+        return internalInfluence;
+    }
+
+    private void preventCollision(List<Tuple<Vec3i, BlockState>> blocks) {
+        for(Tuple<Vec3i,BlockState> t: blocks) {
+            Vec3i pos = t.getA();
+            BlockPos blockCheck = new BlockPos(getBasePos().offset(pos)).offset(strongestInfluence.getB().getNormal().multiply(2));
+
+            //AABB blockcheckAABB = new AABB(blockCheck, new BlockPos(blockCheck.getX() + 1, blockCheck.getY() + 1, blockCheck.getZ() + 1));
+            AABB blockcheckAABB = new AABB(blockCheck);
+            List<BaseEntity> ents = level().getEntitiesOfClass(BaseEntity.class, blockcheckAABB);
+            for (BaseEntity e : ents) {
+
+                if(e.strongestInfluence.getB() == this.strongestInfluence.getB().getOpposite()){
+                    if (!e.equals(this) && e.isBlock(blockCheck, e.getBlocks())) {
+                        Minefinifactory.LOGGER.info("PREVENT");
+                        //TODO implement push type priority
+                        //goes through direction priority. The first entity that matches the direction gets to keep its direction
+                        for(Direction dir: DirectionPriority){
+                            if(this.strongestInfluence.getB() == dir){
+                                e.cancelmove();
+                               return;
+                            }
+                            if(e.strongestInfluence.getB() == dir){
+                                this.cancelmove();
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void cancelmove() {
+        this.strongestInfluence = new Tuple<>(CANCELPRIORITY,null);
+
+        //todo entity wont know it was canceled and may try to repush when it is polled in minecrafts update order and redo calculations. Should add a flag for if entity has calculated this tick
+        if(pushProvidence != null) {
+            for (BaseEntity e : this.pushProvidence) {
+                Minefinifactory.LOGGER.info("CANCEL MOVE OF " + e.toString());
+                e.strongestInfluence = new Tuple<>(CANCELPRIORITY,null);
+            }
+        }
+    }
+
+
+    private Tuple<Integer,Direction> getMoveDirInitialScan(List<Tuple<Vec3i,BlockState>> blocks){
+
+
+        int LIFTERHEIGHT = 5;
+        Queue<Direction> conveyorQueue = new ArrayDeque<Direction>();
+        //scan under
+        boolean gravity = true;
+        for(int i=0;i<blocks.size();i++) {
+            for(int h=-1;h>-LIFTERHEIGHT;h--){
+                BlockPos checkPos = new BlockPos(getBasePos().offset(blocks.get(i).getA())).offset(0,h,0);
+                BlockState checkedBlock = level().getBlockState(checkPos);
+
+                //check block directly underneath
+                if (h == -1){
+                    if(checkedBlock.getBlock() == BlockInit.conveyorBlock.get()){
+
+                        gravity = false;
+                        conveyorQueue.add(checkedBlock.getValue(ConveyorBlock.FACING));
+
+                    }
+
+                }
+
+                //Check lifter blocks
+                if (checkedBlock.getBlock() == BlockInit.lifterBlock.get()) {
+                    if(assertivePushCheck(blocks,new Tuple<>(LIFTERPRIORITY,Direction.UP))){return new Tuple<>(LIFTERPRIORITY,Direction.UP);}
+                }
+
+                if (checkedBlock.getBlock() != Blocks.AIR) {
+                    break;
+                }
+            }
+        }
+
+        //commmit to moving down if no blocks were found underneath
+        if(gravity){
+
+            //TODO assertivePushCheck doublechecks blocks that were already checked above. Entity checking should be incoporated above to reduce computation
+            if(assertivePushCheck(blocks,new Tuple<>(GRAVITYPRIORITY,Direction.DOWN))){
+                return new Tuple<>(GRAVITYPRIORITY,Direction.DOWN);}
+        }
+        //commit to influenced movement
+        Queue<Direction> conveyorInfluence = processConveyorInfluence(conveyorQueue);
+
+        while (!conveyorInfluence.isEmpty()){
+            Direction dir = conveyorInfluence.poll();
+            if(assertivePushCheck(blocks,new Tuple<>(CONVEYORPRIORITY,dir))){return new Tuple<>(CONVEYORPRIORITY,dir);}
+
+        }
+
+
+        //Dont Move
+        return new Tuple<>(-1,null);
+    }
+
+    public boolean assertivePushCheck(List<Tuple<Vec3i, BlockState>> blocks, Tuple<Integer,Direction> push) {
+        Tuple<Integer,Set<BaseEntity>> resulttuple = exploratoryPushCheck(blocks,push);
+        if(resulttuple != null && resulttuple.getB() != null){
+
+            for(BaseEntity e : resulttuple.getB()){
+                e.strongestInfluence = push;
+                e.pushProvidence = resulttuple.getB();
+
+
+
+                if (e.isIdle) {
+                    e.removeBlocks(e.getBlocks());
+                }
+                e.isIdle = false;
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private Tuple<Integer,Set<BaseEntity>> exploratoryPushCheck(List<Tuple<Vec3i, BlockState>> blocks, Tuple<Integer,Direction> push) {
+        Set<BaseEntity> potentialNewPushedEnts = new HashSet<>();
+
+        Integer attemptedPriority = push.getA();
+        Direction attemptedDir =  push.getB();
+
         for(Tuple<Vec3i,BlockState> t: blocks){
             Vec3i pos = t.getA();
-            BlockPos groundcheck = new BlockPos(getBasePos().offset(pos)).relative(moveDirection);
-            if(level().getBlockState(groundcheck) != Blocks.AIR.defaultBlockState()) {
-                return false;
+            BlockPos blockCheck = new BlockPos(getBasePos().offset(pos)).relative(attemptedDir);
+
+            AABB blockcheckAABB = new AABB(blockCheck);
+            List<BaseEntity> ents = level().getEntitiesOfClass(BaseEntity.class, blockcheckAABB);
+            for (BaseEntity e : ents) {
+                if(canPushEntity(e,push)) {
+                    if (!e.equals(this) && e.isBlock(blockCheck, e.getBlocks())) {
+                        potentialNewPushedEnts.add(e);
+                    }
+                }else{
+                    return new Tuple<>(-1,null);
+                }
+            }
+
+            if(scanfirsttuple(blocks,pos.relative(push.getB())) == null) { //TODO very inefficient. if the checked block is also in the structure it shouldnt be in the block list to check in the first place
+
+                if (ents.isEmpty() && level().getBlockState(blockCheck) != Blocks.AIR.defaultBlockState()) {
+                    return new Tuple<>(-1,null);
+                }
             }
         }
-        return true;
+
+        //No blocks stopping. Attempt to push all downstreamblocks
+        //TODO actually this cant be assertive as what if the entity is pushing two entities but one returns true and the next one returns false.
+        //TODO actually it can be assertive as we can do the logic in here, but we have to save the list of entities as part of the state as the pushing will be
+        //done in a seperate call. Unless we pass around the object across the whole tree and then assert the push at the root.
+
+        boolean shouldPush = true;
+        Set<BaseEntity> tempChildren = new HashSet<>();
+        if(!potentialNewPushedEnts.isEmpty()) {
+            for (BaseEntity e : potentialNewPushedEnts) {
+                //Dont push down lifter stack
+                //if(dir == Direction.DOWN && e.lifterIgnoreGravity){return null;}
+                Set<BaseEntity> tempChildren1 = e.exploratoryPushCheck(e.getBlocks(),push).getB();
+                if(tempChildren1 == null){
+                    shouldPush = false;
+                    break;
+                }else{
+                    tempChildren.addAll(tempChildren1);
+                }
+
+            }
+        }else{
+        }
+        if(shouldPush){
+            if(!tempChildren.isEmpty()){potentialNewPushedEnts.addAll(tempChildren);}
+            potentialNewPushedEnts.add(this);
+           return new Tuple<>(push.getA(),potentialNewPushedEnts);
+        }
+
+        return new Tuple<>(-1,null);
     }
 
-    private Direction getMovementDirection(List<Tuple<Vec3i,BlockState>> blocks) {
+    private boolean canPushEntity(BaseEntity e, Tuple<Integer, Direction> push) {
+        return (push.getA() >= e.strongestInfluence.getA());
+    }
 
-
-
-        /*
-        MOVEMENT INFLUENCE PRIORITY
-         - Gravity
-
-         -Push EAST/WEST
-         -PUSH NORTH/SOUTH
-         -PUSH UP/DOWN
-
-         -CONVEYOR (additive)
-         */
-
-        if(getLifterInfluence(blocks)){
-            return Direction.UP;
-        }
-
-        if(canMove(Direction.DOWN,blocks)){
-            return Direction.DOWN;
-        }
-
-        //get Conveyor influence
-        getConveyorInfluence(blocks);
-
-        //TODO Very ugly switch statement ahead. Seems like something that could be condensed into a one-liner
-
-        int n_push_influence = 0;
-        int e_push_influence = 0;
-        int s_push_influence = 0;
-        int w_push_influence = 0;
-        int u_push_influence = 0;
-        int d_push_influence = 0;
-
+    private Queue<Direction> processConveyorInfluence(Queue<Direction> conveyorQueue) {
         int ew_conveyor_influence = 0;
         int ns_conveyor_influence = 0;
+        while(!conveyorQueue.isEmpty()){
+            Direction dir = conveyorQueue.poll();
+            switch (dir) {
+                case NORTH -> ns_conveyor_influence++;
+                case EAST -> ew_conveyor_influence++;
+                case SOUTH -> ns_conveyor_influence--;
+                case WEST -> ew_conveyor_influence--;
+            }
+        }
 
-        if(influenceStack != null){
-        while(!influenceStack.empty()){
-            Tuple<InfluenceTypes,Direction> influencetuple = influenceStack.pop();
-            InfluenceTypes type = influencetuple.getA();
-            Direction dir = influencetuple.getB();
-            switch (type){
-                case PUSHER:
-                    switch (dir){
-                        case UP -> u_push_influence++;
-                        case DOWN -> d_push_influence++;
-                        case NORTH -> n_push_influence++;
-                        case EAST -> e_push_influence++;
-                        case SOUTH -> s_push_influence++;
-                        case WEST -> w_push_influence++;
-                    }
-                    break;
-                case CONVEYOR:
+        Queue<Direction> infQueue = new ArrayDeque<>();
 
-                    switch (dir) {
-                        case NORTH -> ns_conveyor_influence++;
-                        case EAST -> ew_conveyor_influence++;
-                        case SOUTH -> ns_conveyor_influence--;
-                        case WEST -> ew_conveyor_influence--;
-                    }
-                    break;
-                    }
-            }}
+        if(ew_conveyor_influence >0){infQueue.add(Direction.EAST);}
+        if(ew_conveyor_influence <0){infQueue.add(Direction.WEST);}
 
-        if(e_push_influence>0){return Direction.EAST;}
-        if(w_push_influence>0){return Direction.WEST;}
-        if(n_push_influence>0){return Direction.NORTH;}
-        if(s_push_influence>0){return Direction.SOUTH;}
-        if(u_push_influence>0){return Direction.UP;}
-        if(d_push_influence>0){return Direction.DOWN;}
+        if(ns_conveyor_influence >0){infQueue.add(Direction.NORTH);}
+        if(ns_conveyor_influence <0){infQueue.add(Direction.SOUTH);}
 
-        if(ew_conveyor_influence >0){return Direction.EAST;}
-        if(ew_conveyor_influence <0){return Direction.WEST;}
-        if(ns_conveyor_influence >0){return Direction.NORTH;}
-        if(ns_conveyor_influence <0){return Direction.SOUTH;}
+        return infQueue;
 
-        return null;
     }
 
+
     private boolean getLifterInfluence(List<Tuple<Vec3i,BlockState>> blocks) {
-        //TODO roll into conveyorinfluence to not repeat work. Use listener function on lifter to be able to config lifter height per-lifter
+        // rolled into initial conveyor check to not repeat work.
         int LIFTERHEIGHT = 5;
 
         for(int i=0;i<blocks.size();i++) {
@@ -341,17 +471,6 @@ public class BaseEntity extends Entity {
 
 
         return false;
-    }
-
-    private void getConveyorInfluence(List<Tuple<Vec3i,BlockState>> blocks) {
-
-        for(int i=0;i<blocks.size();i++) {
-            BlockPos belowPos = new BlockPos(getBasePos().offset(blocks.get(i).getA())).relative(Direction.DOWN);
-           if (level().getBlockState(belowPos).getBlock() == BlockInit.conveyorBlock.get()) {
-               influenceStack.push(new Tuple<>(InfluenceTypes.CONVEYOR, level().getBlockState(belowPos).getValue(ConveyorBlock.FACING)));
-           }
-        }
-
     }
 
     private void removeBlocks(List<Tuple<Vec3i,BlockState>> blocks) {
@@ -380,7 +499,9 @@ public class BaseEntity extends Entity {
     }
 
     public Vec3i getBasePos() {
-        return new Vec3i(getBlockX(),getBlockY(),getBlockZ());
+        //Cant use getBlockX as it is out of sync sometimes. Rounds absolute pos to catch this even if it is a tick off
+        //return new Vec3i(getBlockX(),getBlockY(),getBlockZ());
+        return new Vec3i((int) Math.round(position().x), (int) Math.round(position().y), (int) Math.round(position().z));
     }
 
     private void snaptoblock() {
@@ -424,7 +545,7 @@ public class BaseEntity extends Entity {
 
     @Override
     protected void defineSynchedData() {
-       this.entityData.define(BLOCKS, new ArrayList<>());
+        this.entityData.define(BLOCKS, new ArrayList<>());
     }
 
     public List<Tuple<Vec3i,BlockState>> getBlocks(){
@@ -449,7 +570,12 @@ public class BaseEntity extends Entity {
 
         setBlocks(blocks);
 
+        internalInfluence = getInfluenceTuple(compound,"internal");
+        externalInfluence = getInfluenceTuple(compound,"external");
+        strongestInfluence = getInfluenceTuple(compound,"strongest");
+
     }
+
 
     @Override
     protected void addAdditionalSaveData(CompoundTag compound) {
@@ -467,6 +593,48 @@ public class BaseEntity extends Entity {
 
         compound.putIntArray("blocktuple",serializedints);
 
+        putInfluenceTuple(compound,internalInfluence,"internal");
+        putInfluenceTuple(compound,externalInfluence,"external");
+        putInfluenceTuple(compound,strongestInfluence,"strongest");
+
     }
 
+    private void putInfluenceTuple(CompoundTag compound, Tuple<Integer, Direction> internalInfluence, String tagprefix) {
+        compound.putInt(tagprefix+"priority",internalInfluence.getA());
+        if(internalInfluence.getB() != null) {
+            compound.putInt(tagprefix + "dir", internalInfluence.getB().get3DDataValue());
+        }
+        else{
+            compound.putInt(tagprefix + "dir",-1);
+        }
+    }
+
+    private Tuple<Integer, Direction> getInfluenceTuple(CompoundTag compound, String tagprefix) {
+        Integer priority = compound.getInt(tagprefix+"priority");
+        Integer dirint = compound.getInt(tagprefix+"dir");
+        Direction dir = null;
+        if(dirint != -1) {
+            dir = Direction.from3DDataValue(compound.getInt(tagprefix + "dir"));
+        }
+        return new Tuple<Integer,Direction>(priority,dir);
+    }
+
+    @Override
+    public PushReaction getPistonPushReaction() {
+        Minefinifactory.LOGGER.info("PISTON PUSH");
+        strongestInfluence = new Tuple<>(-999,null);
+        return PushReaction.BLOCK;
+    }
+
+    @Override
+    protected AABB getBoundingBoxForPose(Pose pose) {
+        return this.getBoundingBox();
+        //return super.getBoundingBoxForPose(pose);
+    }
+
+    @Override
+    public AABB getBoundingBoxForCulling() {
+        return this.getBoundingBox();
+        //return super.getBoundingBoxForCulling();
+    }
 }

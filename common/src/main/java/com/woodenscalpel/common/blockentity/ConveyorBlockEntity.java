@@ -36,19 +36,7 @@ public class ConveyorBlockEntity extends BlockEntity implements TickableBlockEnt
 
     @Override
     public void tick() {
-/*
-        if (Minefinifactory.mastertickcount % TICKSPERBLOCK == 0) {
-            BlockPos pos = this.getBlockPos();
-            AABB blockabove = new AABB(new BlockPos(pos.getX(), pos.getY() + 1, pos.getZ()), new BlockPos(pos.getX() + 1, pos.getY() + 2, pos.getZ() + 1));
-            List<BaseEntity> ents = level.getEntitiesOfClass(BaseEntity.class, blockabove);
-            for (BaseEntity e : ents) {
-                //e.move(MoverType.PISTON,e.position().add(new Vec3(1,0,0)));
-                e.influenceStack.push(new Tuple<BaseEntity.InfluenceTypes, Direction>(BaseEntity.InfluenceTypes.CONVEYOR, getBlockState().getValue(ConveyorBlock.FACING)));
-
-            }
-        }
-
- */
+      //  Minefinifactory.LOGGER.info("TICKER");
     }
 
 }

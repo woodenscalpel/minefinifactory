@@ -2,9 +2,7 @@ package com.woodenscalpel.common.init;
 
 import com.woodenscalpel.Minefinifactory;
 import com.woodenscalpel.client.render.blockentity.WelderBER;
-import com.woodenscalpel.common.blockentity.ConveyorBlockEntity;
-import com.woodenscalpel.common.blockentity.DestroyerBlockEntity;
-import com.woodenscalpel.common.blockentity.WelderBlockEntity;
+import com.woodenscalpel.common.blockentity.*;
 import com.woodenscalpel.common.blocks.*;
 import com.woodenscalpel.common.blocks.pusher.PusherBaseBlock;
 import com.woodenscalpel.common.blocks.pusher.PusherHeadBlock;
@@ -40,6 +38,7 @@ public class BlockInit {
     public static final RegistrySupplier<Block> welderBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "welderblock"), () -> new WelderBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
     public static final RegistrySupplier<Block> destroyerBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "destroyerblock"), () -> new DestroyerBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
     public static final RegistrySupplier<Block> lifterBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "lifterblock"), () -> new LifterBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
+    public static final RegistrySupplier<Block> sensorBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "sensorblock"), () -> new SensorBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
 
     public static final RegistrySupplier<Block> pusherBaseBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "pusherblock"), () -> new PusherBaseBlock(false,BlockBehaviour.Properties.copy(Blocks.PISTON)));
     public static final RegistrySupplier<Block> pusherHeadBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "pusherheadblock"), () -> new PusherHeadBlock(BlockBehaviour.Properties.copy(Blocks.PISTON_HEAD)));
@@ -49,6 +48,7 @@ public class BlockInit {
     public static final RegistrySupplier<BlockItem> welderBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"welderblockitem"), () -> new BlockItem(welderBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> destroyerBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"destroyerblockitem"), () -> new BlockItem(destroyerBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> lifterBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"lifterblockitem"), () -> new BlockItem(lifterBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
+    public static final RegistrySupplier<BlockItem> sensorBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"sensorblockitem"), () -> new BlockItem(sensorBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> pusherBlockItem = ITEMS.register(new ResourceLocation(MOD_ID +"pusherblockitem"), () -> new BlockItem(pusherBaseBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
 
     public static final RegistrySupplier<BlockEntityType<ConveyorBlockEntity>> conveyorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "conveyorblockentity"),
@@ -59,6 +59,12 @@ public class BlockInit {
 
     public static final RegistrySupplier<BlockEntityType<DestroyerBlockEntity>> destroyerBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "destroyerblockentity"),
             () -> BlockEntityType.Builder.<DestroyerBlockEntity>of(DestroyerBlockEntity::new,destroyerBlock.get()).build(null));
+
+    public static final RegistrySupplier<BlockEntityType<LifterBlockEntity>> lifterBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "lifterblockentity"),
+            () -> BlockEntityType.Builder.<LifterBlockEntity>of(LifterBlockEntity::new,lifterBlock.get()).build(null));
+
+    public static final RegistrySupplier<BlockEntityType<SensorBlockEntity>> sensorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "sendorblockentity"),
+            () -> BlockEntityType.Builder.<SensorBlockEntity>of(SensorBlockEntity::new,sensorBlock.get()).build(null));
 
 
     public static void register(){
