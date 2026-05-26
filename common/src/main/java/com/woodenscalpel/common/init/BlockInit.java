@@ -39,6 +39,7 @@ public class BlockInit {
     public static final RegistrySupplier<Block> destroyerBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "destroyerblock"), () -> new DestroyerBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
     public static final RegistrySupplier<Block> lifterBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "lifterblock"), () -> new LifterBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
     public static final RegistrySupplier<Block> sensorBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "sensorblock"), () -> new SensorBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
+    public static final RegistrySupplier<Block> rotatorBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "rotatorblock"), () -> new RotatorBlock(BlockBehaviour.Properties.copy(Blocks.STONE)));
 
     public static final RegistrySupplier<Block> pusherBaseBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "pusherblock"), () -> new PusherBaseBlock(false,BlockBehaviour.Properties.copy(Blocks.PISTON)));
     public static final RegistrySupplier<Block> pusherHeadBlock = BLOCKS.register(new ResourceLocation(MOD_ID, "pusherheadblock"), () -> new PusherHeadBlock(BlockBehaviour.Properties.copy(Blocks.PISTON_HEAD)));
@@ -49,6 +50,7 @@ public class BlockInit {
     public static final RegistrySupplier<BlockItem> destroyerBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"destroyerblockitem"), () -> new BlockItem(destroyerBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> lifterBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"lifterblockitem"), () -> new BlockItem(lifterBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> sensorBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"sensorblockitem"), () -> new BlockItem(sensorBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
+    public static final RegistrySupplier<BlockItem> rotatorBlockItem = Minefinifactory.ITEMS.register(new ResourceLocation(MOD_ID ,"rotatorblockitem"), () -> new BlockItem(rotatorBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
     public static final RegistrySupplier<BlockItem> pusherBlockItem = ITEMS.register(new ResourceLocation(MOD_ID +"pusherblockitem"), () -> new BlockItem(pusherBaseBlock.get(),new Item.Properties().arch$tab(MINEFINIFACTORY_TAB)));
 
     public static final RegistrySupplier<BlockEntityType<ConveyorBlockEntity>> conveyorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "conveyorblockentity"),
@@ -63,8 +65,11 @@ public class BlockInit {
     public static final RegistrySupplier<BlockEntityType<LifterBlockEntity>> lifterBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "lifterblockentity"),
             () -> BlockEntityType.Builder.<LifterBlockEntity>of(LifterBlockEntity::new,lifterBlock.get()).build(null));
 
-    public static final RegistrySupplier<BlockEntityType<SensorBlockEntity>> sensorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "sendorblockentity"),
+    public static final RegistrySupplier<BlockEntityType<SensorBlockEntity>> sensorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "sensorblockentity"),
             () -> BlockEntityType.Builder.<SensorBlockEntity>of(SensorBlockEntity::new,sensorBlock.get()).build(null));
+
+    public static final RegistrySupplier<BlockEntityType<RotatorBlockEntity>> rotatorBlockEntity = BLOCKENTITIES.register(new ResourceLocation(MOD_ID , "rotatorblockentity"),
+            () -> BlockEntityType.Builder.<RotatorBlockEntity>of(RotatorBlockEntity::new,rotatorBlock.get()).build(null));
 
 
     public static void register(){

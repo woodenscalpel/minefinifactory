@@ -1,7 +1,9 @@
 package com.woodenscalpel.common.multiblockentity;
 
 import com.woodenscalpel.Minefinifactory;
+import com.woodenscalpel.common.blockentity.RotatorBlockEntity;
 import com.woodenscalpel.common.blocks.ConveyorBlock;
+import com.woodenscalpel.common.blocks.RotatorBlock;
 import com.woodenscalpel.common.init.BlockInit;
 import com.woodenscalpel.common.init.EntityInit;
 import com.woodenscalpel.common.mastertick.MasterTick;
@@ -21,10 +23,12 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
@@ -43,7 +47,15 @@ public class BaseEntity extends Entity {
     private static final String PUSHNBTTAG = "dir";
 
     private Set<BaseEntity> pushProvidence;
-    public boolean isIdle;
+    //public boolean isIdle;
+    public enum State {
+        IDLE,
+        MOVING,
+        ROTATING
+    }
+    public State state;
+
+    boolean rotationClockwise; //determines rotation direction for animation, true if clockwise, false if ccw
 
     public Tuple<Integer,Direction> internalInfluence;
     public Tuple<Integer,Direction> externalInfluence;
@@ -63,7 +75,9 @@ public class BaseEntity extends Entity {
     public BaseEntity(Level level, Vec3 position, List<Tuple<Vec3i, BlockState>> newblocks) {
 
         this(EntityInit.baseEntityType.get() , level);
-        isIdle = true;
+
+        //isIdle = true;
+        state = State.IDLE;
 
         internalInfluence = new Tuple<>(-999, null);
         externalInfluence = new Tuple<>(-999, null);
@@ -77,7 +91,7 @@ public class BaseEntity extends Entity {
     }
 
     public void destroy() {
-        //might need to clean up blocks in world or something before killing
+        //might need t9o clean up blocks in world or something before killing
         this.removeBlocks(getBlocks());
         this.kill();
     }
@@ -134,9 +148,10 @@ public class BaseEntity extends Entity {
     public boolean isBlock(BlockPos absPos,List<Tuple<Vec3i,BlockState>> blocks) {
         // Vec3i relpos = ((Vec3i) absPos.offset(this.getBasePos().multiply(-1)));
         Vec3i relpos = this.getBasePos().multiply(-1).offset(absPos);
-        for(int i=0; i<blocks.size();i++){
-            if(blocks.get(i).getA().equals(relpos)){
-                return true;}
+        for (Tuple<Vec3i, BlockState> block : blocks) {
+            if (block.getA().equals(relpos)) {
+                return true;
+            }
         }
         return false;
     }
@@ -171,7 +186,7 @@ public class BaseEntity extends Entity {
         Direction moveDir = strongestInfluence.getB();
         //moveDirection = getMoveDirFromStack();
 
-        if(!isIdle && moveDir != null) {
+        if(state == State.MOVING && moveDir != null) {
             boolean move = true;
             if (pushProvidence != null) {
                 for (BaseEntity ent : pushProvidence) {
@@ -184,6 +199,9 @@ public class BaseEntity extends Entity {
                 }
             }
         }
+        if(state == State.ROTATING){
+            //rotate(new Rotation Rotation.);
+        }
         if(level().getServer().getTickCount() % (TICKSPERBLOCK) == (TICKSPERBLOCK - 1)) {
             resetvarsfornexttick();
         }
@@ -192,7 +210,6 @@ public class BaseEntity extends Entity {
     private void resetvarsfornexttick() {
         /*
         This is done during subtick, as if done at beginning of maintick it will zero out fields entities that tick before it have set
-
          */
         lifterIgnoreGravity = false;
         pushProvidence = null;
@@ -208,7 +225,7 @@ public class BaseEntity extends Entity {
         List<Tuple<Vec3i,BlockState>> blocks = getBlocks(); //TODO Big packet every tick is not good
 
         //If idle since last maintick, place blocks in world so they can be operated on by machines.
-        if (isIdle && isNotPlaced(blocks)) {
+        if (state == State.IDLE && isNotPlaced(blocks)) {
             placeBlocks(blocks);
         }
 
@@ -222,14 +239,14 @@ public class BaseEntity extends Entity {
         }
 
         //if idle since last maintick, but starting to move now, remove blocks from world.
-        if (strongestInfluence.getB() != null && isIdle) {
+        if (strongestInfluence.getB() != null && state == State.IDLE) {
             removeBlocks(blocks);
         }
 
         if (strongestInfluence.getB() == null) {
-            isIdle = true;
+            state = State.IDLE;
         } else {
-            isIdle = false; //This is what is checked to start movement
+            state = State.MOVING; //This is what is checked to start movement
         }
 
     }
@@ -308,6 +325,15 @@ public class BaseEntity extends Entity {
 
                 }
 
+                //Rotator Blocks
+                if(checkedBlock.getBlock() == BlockInit.rotatorBlock.get()){
+                    if(canRotate()){
+                        state = State.ROTATING;
+                        rotationClockwise = ((RotatorBlockEntity) level().getBlockEntity(checkPos)).directionClockwise;
+                        return new Tuple<>(-1,null);
+                    }
+                }
+
                 //Check lifter blocks
                 if (checkedBlock.getBlock() == BlockInit.lifterBlock.get()) {
                     if(assertivePushCheck(blocks,new Tuple<>(LIFTERPRIORITY,Direction.UP))){return new Tuple<>(LIFTERPRIORITY,Direction.UP);}
@@ -340,6 +366,11 @@ public class BaseEntity extends Entity {
         return new Tuple<>(-1,null);
     }
 
+    private boolean canRotate() {
+        //TODO implement rotation collision check
+        return true;
+    }
+
     public boolean assertivePushCheck(List<Tuple<Vec3i, BlockState>> blocks, Tuple<Integer,Direction> push) {
         Tuple<Integer,Set<BaseEntity>> resulttuple = exploratoryPushCheck(blocks,push);
         if(resulttuple != null && resulttuple.getB() != null){
@@ -350,10 +381,10 @@ public class BaseEntity extends Entity {
 
 
 
-                if (e.isIdle) {
+                if (e.state == State.IDLE) {
                     e.removeBlocks(e.getBlocks());
                 }
-                e.isIdle = false;
+                e.state = State.MOVING;
             }
             return true;
         }
@@ -611,7 +642,7 @@ public class BaseEntity extends Entity {
 
     private Tuple<Integer, Direction> getInfluenceTuple(CompoundTag compound, String tagprefix) {
         Integer priority = compound.getInt(tagprefix+"priority");
-        Integer dirint = compound.getInt(tagprefix+"dir");
+        int dirint = compound.getInt(tagprefix+"dir");
         Direction dir = null;
         if(dirint != -1) {
             dir = Direction.from3DDataValue(compound.getInt(tagprefix + "dir"));
@@ -620,21 +651,12 @@ public class BaseEntity extends Entity {
     }
 
     @Override
-    public PushReaction getPistonPushReaction() {
+    public @NotNull PushReaction getPistonPushReaction() {
         Minefinifactory.LOGGER.info("PISTON PUSH");
         strongestInfluence = new Tuple<>(-999,null);
         return PushReaction.BLOCK;
     }
 
-    @Override
-    protected AABB getBoundingBoxForPose(Pose pose) {
-        return this.getBoundingBox();
-        //return super.getBoundingBoxForPose(pose);
-    }
-
-    @Override
-    public AABB getBoundingBoxForCulling() {
-        return this.getBoundingBox();
-        //return super.getBoundingBoxForCulling();
+    public void rotateBlocks() {
     }
 }
