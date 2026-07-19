@@ -22,6 +22,10 @@ public class MasterTick {
        return getTickcount(server) % TICKSPERBLOCK == 0;
    }
 
+   public static boolean isPhase1(MinecraftServer server){ return getTickcount(server) % TICKSPERBLOCK == 1;}
+    public static boolean isPhase2(MinecraftServer server){return getTickcount(server) % TICKSPERBLOCK == 2;}
+
+
    /*
    public static void registerMasterTickEvent(){
        //TickEvent.ServerLevelTick.SERVER_LEVEL_PRE.register((ServerLevel level) -> {incTickcount();});

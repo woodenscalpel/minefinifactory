@@ -3,7 +3,6 @@ package com.woodenscalpel.common.multiblockentity;
 import com.woodenscalpel.Minefinifactory;
 import com.woodenscalpel.common.blockentity.RotatorBlockEntity;
 import com.woodenscalpel.common.blocks.ConveyorBlock;
-import com.woodenscalpel.common.blocks.RotatorBlock;
 import com.woodenscalpel.common.init.BlockInit;
 import com.woodenscalpel.common.init.EntityInit;
 import com.woodenscalpel.common.mastertick.MasterTick;
@@ -19,11 +18,9 @@ import net.minecraft.util.Tuple;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.AABB;
@@ -47,6 +44,37 @@ public class BaseEntity extends Entity {
     private static final String PUSHNBTTAG = "dir";
 
     private Set<BaseEntity> pushProvidence;
+
+    public void addInfluence(Direction dir, int i, UUID uuid) { //direction, priority, UUID
+        //Minefinifactory.LOGGER.info("Called");
+        if (influenceList2 == null) {
+            influenceList2 = new ArrayList<>();
+        }
+        if (influenceList2 != null) {
+            influenceList2.add(new ArrayList<>(Arrays.asList(dir, i, uuid)));
+            //Minefinifactory.LOGGER.info("ADDED");
+        }
+
+        //recurse in dir
+
+        for(Tuple<Vec3i,BlockState> t: this.getBlocks()){
+            Vec3i pos = t.getA();
+            BlockPos blockCheck = new BlockPos(getBasePos().offset(pos)).relative(dir);
+
+            AABB blockcheckAABB = new AABB(blockCheck);
+            List<BaseEntity> ents = level().getEntitiesOfClass(BaseEntity.class, blockcheckAABB);
+            for (BaseEntity e : ents) {
+                    if (!e.equals(this) && e.isBlock(blockCheck, e.getBlocks())) {
+
+                        e.addInfluence(dir,i,uuid);
+                        break;
+                    }
+            }
+        }
+
+
+    }
+
     //public boolean isIdle;
     public enum State {
         IDLE,
@@ -60,6 +88,9 @@ public class BaseEntity extends Entity {
     public Tuple<Integer,Direction> internalInfluence;
     public Tuple<Integer,Direction> externalInfluence;
     public Tuple<Integer,Direction> strongestInfluence;
+
+    public List<Object> influenceList;
+    public List<List<Object>> influenceList2;
 
     public CompoundTag pushNBT;
 
@@ -88,6 +119,11 @@ public class BaseEntity extends Entity {
 
         this.setBlocks(newblocks);
         setPos(position.x,position.y,position.z);
+
+        //Below is the initialization for maintick2
+        //List of all influences acting on block
+        influenceList = new ArrayList<>();
+        influenceList2 = new ArrayList<>();
     }
 
     public void destroy() {
@@ -174,15 +210,44 @@ public class BaseEntity extends Entity {
         this.verticalCollision = false;
         super.tick();
 
-        if (MasterTick.isMasterTick(this.getServer())){
-            maintick();
+        //Minefinifactory.LOGGER.info("WTRFD");
+
+        if (MasterTick.isPhase1(getServer())) {
+            //Phase 1 - no logic here - influence is propogated through entities by influence sources
+            // Wrong! Might as well add gravity influence here maybe
+            //Double wrong - waste of time if gravity is low priority, just check if no other influence
         }
+
+        if (MasterTick.isPhase2(getServer())){
+            //phase 2 - resolve conflicts
+
+            int strongest = 0;
+            if(influenceList2 != null) {
+                for (List<Object> influence : influenceList2) {
+                    Minefinifactory.LOGGER.info(influence.get(0).toString());
+                    if ((int) influence.get(1) > strongest) {
+                        strongest = (int) influence.get(1);
+                        strongestInfluence = new Tuple<>((int) influence.get(1), (Direction) influence.get(0));
+                        Minefinifactory.LOGGER.info(strongestInfluence.getB().getName());
+
+                    }
+
+                }
+            }
+        }
+
+        if (MasterTick.isMasterTick(this.getServer())){
+            influenceList2 = new ArrayList<>();
+            maintick2();
+        }
+
         else{
-            subtick();
+            subtick2();
         }
     }
 
     private void subtick(){
+        //Minefinifactory.LOGGER.info(state.name());
         Direction moveDir = strongestInfluence.getB();
         //moveDirection = getMoveDirFromStack();
 
@@ -207,16 +272,77 @@ public class BaseEntity extends Entity {
         }
     }
 
+    private void subtick2(){
+        //Minefinifactory.LOGGER.info(state.name());
+        Direction moveDir = strongestInfluence.getB();
+        //moveDirection = getMoveDirFromStack();
+
+        //if(state == State.MOVING && moveDir != null) {
+        if( moveDir != null) {
+                move(MoverType.SELF, Helpers.Vec3itof(moveDir.getNormal()).scale(1F / TICKSPERBLOCK));
+        }
+
+
+        if(level().getServer().getTickCount() % (TICKSPERBLOCK) == (TICKSPERBLOCK - 1)) {
+            resetvarsfornexttick();
+        }
+    }
+
     private void resetvarsfornexttick() {
         /*
         This is done during subtick, as if done at beginning of maintick it will zero out fields entities that tick before it have set
          */
         lifterIgnoreGravity = false;
         pushProvidence = null;
-
         internalInfluence = new Tuple<>(-999, null);
         externalInfluence = new Tuple<>(-999, null);
         strongestInfluence = new Tuple<>(-999, null);
+    }
+
+    private void maintick2(){
+        //cleanup steps from previous refactor idk
+
+        snaptoblock();//Failsafe, Should be aligned to block already
+        List<Tuple<Vec3i,BlockState>> blocks = getBlocks(); //TODO Big packet every tick is not good
+        //TODO do we have to get this list every tick?
+
+        //If idle since last maintick, place blocks in world so they can be operated on by machines.
+        if (state == State.IDLE && isNotPlaced(blocks)) {
+            placeBlocks(blocks);
+        }
+
+        //getMoveDirInitialScan2(blocks);
+        //assertivePushCheck(blocks,new Tuple<>(10,Direction.NORTH));
+
+        /*
+        if(strongestInfluence.getB() != null) {
+            assertivePushCheck(blocks, strongestInfluence);
+        }
+        */
+
+
+        //state = State.MOVING;
+        //strongestInfluence = compareInfluence();
+
+        //Minefinifactory.LOGGER.info(strongestInfluence.getB().getName());
+
+        //Minefinifactory.LOGGER.info(strongestInfluence.getA().toString());
+        if(strongestInfluence.getB() != null) {
+            preventCollision(blocks);
+        }
+
+        //if idle since last maintick, but starting to move now, remove blocks from world.
+        if (strongestInfluence.getB() != null && state == State.IDLE) {
+            removeBlocks(blocks);
+        }
+
+        if (strongestInfluence.getB() == null) {
+            state = State.IDLE;
+        } else {
+            state = State.MOVING; //This is what is checked to start movement
+        }
+
+
     }
 
     private void maintick() {
@@ -302,21 +428,21 @@ public class BaseEntity extends Entity {
     }
 
 
-    private Tuple<Integer,Direction> getMoveDirInitialScan(List<Tuple<Vec3i,BlockState>> blocks){
+    private Tuple<Integer,Direction> getMoveDirInitialScan(List<Tuple<Vec3i,BlockState>> blocks) {
 
 
         int LIFTERHEIGHT = 5;
         Queue<Direction> conveyorQueue = new ArrayDeque<Direction>();
         //scan under
         boolean gravity = true;
-        for(int i=0;i<blocks.size();i++) {
-            for(int h=-1;h>-LIFTERHEIGHT;h--){
-                BlockPos checkPos = new BlockPos(getBasePos().offset(blocks.get(i).getA())).offset(0,h,0);
+        for (int i = 0; i < blocks.size(); i++) {
+            for (int h = -1; h > -LIFTERHEIGHT; h--) {
+                BlockPos checkPos = new BlockPos(getBasePos().offset(blocks.get(i).getA())).offset(0, h, 0);
                 BlockState checkedBlock = level().getBlockState(checkPos);
 
                 //check block directly underneath
-                if (h == -1){
-                    if(checkedBlock.getBlock() == BlockInit.conveyorBlock.get()){
+                if (h == -1) {
+                    if (checkedBlock.getBlock() == BlockInit.conveyorBlock.get()) {
 
                         gravity = false;
                         conveyorQueue.add(checkedBlock.getValue(ConveyorBlock.FACING));
@@ -326,17 +452,19 @@ public class BaseEntity extends Entity {
                 }
 
                 //Rotator Blocks
-                if(checkedBlock.getBlock() == BlockInit.rotatorBlock.get()){
-                    if(canRotate()){
+                if (checkedBlock.getBlock() == BlockInit.rotatorBlock.get()) {
+                    if (canRotate()) {
                         state = State.ROTATING;
                         rotationClockwise = ((RotatorBlockEntity) level().getBlockEntity(checkPos)).directionClockwise;
-                        return new Tuple<>(-1,null);
+                        return new Tuple<>(-1, null);
                     }
                 }
 
                 //Check lifter blocks
                 if (checkedBlock.getBlock() == BlockInit.lifterBlock.get()) {
-                    if(assertivePushCheck(blocks,new Tuple<>(LIFTERPRIORITY,Direction.UP))){return new Tuple<>(LIFTERPRIORITY,Direction.UP);}
+                    if (assertivePushCheck(blocks, new Tuple<>(LIFTERPRIORITY, Direction.UP))) {
+                        return new Tuple<>(LIFTERPRIORITY, Direction.UP);
+                    }
                 }
 
                 if (checkedBlock.getBlock() != Blocks.AIR) {
@@ -346,24 +474,78 @@ public class BaseEntity extends Entity {
         }
 
         //commmit to moving down if no blocks were found underneath
-        if(gravity){
+        if (gravity) {
 
             //TODO assertivePushCheck doublechecks blocks that were already checked above. Entity checking should be incoporated above to reduce computation
-            if(assertivePushCheck(blocks,new Tuple<>(GRAVITYPRIORITY,Direction.DOWN))){
-                return new Tuple<>(GRAVITYPRIORITY,Direction.DOWN);}
+            if (assertivePushCheck(blocks, new Tuple<>(GRAVITYPRIORITY, Direction.DOWN))) {
+                return new Tuple<>(GRAVITYPRIORITY, Direction.DOWN);
+            }
         }
         //commit to influenced movement
         Queue<Direction> conveyorInfluence = processConveyorInfluence(conveyorQueue);
 
-        while (!conveyorInfluence.isEmpty()){
+        while (!conveyorInfluence.isEmpty()) {
             Direction dir = conveyorInfluence.poll();
-            if(assertivePushCheck(blocks,new Tuple<>(CONVEYORPRIORITY,dir))){return new Tuple<>(CONVEYORPRIORITY,dir);}
+            if (assertivePushCheck(blocks, new Tuple<>(CONVEYORPRIORITY, dir))) {
+                return new Tuple<>(CONVEYORPRIORITY, dir);
+            }
 
         }
 
 
         //Dont Move
-        return new Tuple<>(-1,null);
+        return new Tuple<>(-1, null);
+    }
+
+
+
+    private Tuple<Integer,Direction> getMoveDirInitialScan2(List<Tuple<Vec3i,BlockState>> blocks) {
+
+
+        int LIFTERHEIGHT = 5;
+        Queue<Direction> conveyorQueue = new ArrayDeque<Direction>();
+        //scan under
+        boolean gravity = true;
+        for (int i = 0; i < blocks.size(); i++) {
+
+                BlockPos checkPos = new BlockPos(getBasePos().offset(blocks.get(i).getA())).offset(0, -1, 0);
+                BlockState checkedBlock = level().getBlockState(checkPos);
+
+                //check block directly underneath
+
+                    if (checkedBlock.getBlock() == BlockInit.conveyorBlock.get()) {
+
+                        gravity = false;
+                        conveyorQueue.add(checkedBlock.getValue(ConveyorBlock.FACING));
+
+                    }
+
+        }
+
+        //commmit to moving down if no blocks were found underneath
+
+        if (gravity) {
+
+            //TODO assertivePushCheck doublechecks blocks that were already checked above. Entity checking should be incoporated above to reduce computation
+            if (assertivePushCheck(blocks, new Tuple<>(GRAVITYPRIORITY, Direction.DOWN))) {
+                return new Tuple<>(GRAVITYPRIORITY, Direction.DOWN);
+            }
+        }
+
+        //commit to influenced movement
+        Queue<Direction> conveyorInfluence = processConveyorInfluence(conveyorQueue);
+
+        while (!conveyorInfluence.isEmpty()) {
+            Direction dir = conveyorInfluence.poll();
+            if (assertivePushCheck(blocks, new Tuple<>(CONVEYORPRIORITY, dir))) {
+                return new Tuple<>(CONVEYORPRIORITY, dir);
+            }
+
+        }
+
+
+        //Dont Move
+        return new Tuple<>(-1, null);
     }
 
     private boolean canRotate() {

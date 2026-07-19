@@ -57,4 +57,6 @@ public class ConveyorBlock extends DirectionalBlock implements EntityBlock {
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> blockEntityType) {
         return TickableBlockEntity.getTickerHelper(level);
     }
+
+
 }
